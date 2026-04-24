@@ -16,19 +16,30 @@ class EstablecimientosService {
   Future<List<EstablecimientoModel>> getAll() async {
     final response = await _dio.get('/establecimientos');
     if (response.statusCode == 200) {
-      final data = response.data as List<dynamic>;
-      return data.map((json) => EstablecimientoModel.fromJson(json)).toList();
+      final List data = response.data is List
+          ? response.data
+          : (response.data['data'] ?? []) as List;
+      return data
+          .map((json) =>
+              EstablecimientoModel.fromJson(json as Map<String, dynamic>))
+          .toList();
     } else {
       throw Exception('Error al cargar establecimientos');
     }
   }
 
   Future<EstablecimientoModel> getById(int id) async {
-    final response = await _dio.get('/establecimientos/$id');
-    if (response.statusCode == 200) {
-      return EstablecimientoModel.fromJson(response.data);
-    } else {
-      throw Exception('Error al cargar establecimiento');
+    try {
+      final response = await _dio.get(
+        '${ApiConstants.parqueaderoBaseUrl}/establecimientos/$id',
+      );
+      dynamic raw = response.data;
+      if (raw is Map && raw.containsKey('data')) {
+        raw = raw['data'];
+      }
+      return EstablecimientoModel.fromJson(Map<String, dynamic>.from(raw));
+    } on DioException catch (e) {
+      throw Exception('Error: ${e.response?.data ?? e.message}');
     }
   }
 
@@ -63,26 +74,36 @@ class EstablecimientosService {
     required String telefono,
     String? logoPath,
   }) async {
-    final Map<String, dynamic> fields = {
-      '_method': 'PUT',
-      'nombre': nombre,
-      'nit': nit,
-      'direccion': direccion,
-      'telefono': telefono,
-    };
-
-    if (logoPath != null && logoPath.isNotEmpty) {
-      fields['logo'] = await MultipartFile.fromFile(logoPath);
-    }
-
-    final formData = FormData.fromMap(fields);
-
-    final response =
-        await _dio.post('/establecimiento-update/$id', data: formData);
-    if (response.statusCode == 200) {
-      return EstablecimientoModel.fromJson(response.data);
-    } else {
-      throw Exception('Error al actualizar establecimiento');
+    try {
+      final Map<String, dynamic> fields = {
+        '_method': 'PUT',
+        'nombre': nombre,
+        'nit': nit,
+        'direccion': direccion,
+        'telefono': telefono,
+      };
+      if (logoPath != null) {
+        fields['logo'] =
+            await MultipartFile.fromFile(logoPath, filename: 'logo.jpg');
+      }
+      final formData = FormData.fromMap(fields);
+      final response = await _dio.post(
+        '${ApiConstants.parqueaderoBaseUrl}/establecimiento-update/$id',
+        data: formData,
+        options: Options(
+          headers: {'Accept': 'application/json'},
+          validateStatus: (status) => status! < 500,
+        ),
+      );
+      if (response.statusCode == 405) {
+        throw Exception('Método no permitido por el servidor');
+      }
+      final raw = response.data is Map && response.data['data'] != null
+          ? response.data['data']
+          : response.data;
+      return EstablecimientoModel.fromJson(Map<String, dynamic>.from(raw));
+    } on DioException catch (e) {
+      throw Exception('Error: ${e.response?.data ?? e.message}');
     }
   }
 

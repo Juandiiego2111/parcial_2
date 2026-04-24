@@ -4,8 +4,45 @@ import 'package:parcial_2/services/accidentes_service.dart';
 import 'package:parcial_2/services/establecimientos_service.dart';
 import 'package:parcial_2/widgets/skeleton_card.dart';
 
-class DashboardView extends StatelessWidget {
+class DashboardView extends StatefulWidget {
   const DashboardView({super.key});
+
+  @override
+  State<DashboardView> createState() => _DashboardViewState();
+}
+
+class _DashboardViewState extends State<DashboardView> {
+  final AccidentesService _accidentesService = AccidentesService();
+  final EstablecimientosService _establecimientosService =
+      EstablecimientosService();
+
+  int? _totalAccidentes;
+  int? _totalEstablecimientos;
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _cargarTotales();
+  }
+
+  Future<void> _cargarTotales() async {
+    setState(() => _loading = true);
+    try {
+      // Cargar AMBOS en paralelo
+      final results = await Future.wait([
+        _accidentesService.fetchAll(),
+        _establecimientosService.getAll(),
+      ]);
+      setState(() {
+        _totalAccidentes = (results[0] as List).length;
+        _totalEstablecimientos = (results[1] as List).length;
+        _loading = false;
+      });
+    } catch (e) {
+      setState(() => _loading = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -20,10 +57,7 @@ class DashboardView extends StatelessWidget {
               background: Container(
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
-                    colors: [
-                      Colors.teal,
-                      Colors.teal.shade700,
-                    ],
+                    colors: [Colors.teal, Colors.teal.shade700],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
@@ -48,8 +82,7 @@ class DashboardView extends StatelessWidget {
                         child: _StatCard(
                           title: 'Total Accidentes',
                           icon: Icons.warning_rounded,
-                          future: AccidentesService().fetchAll(),
-                          builder: (list) => list.length.toString(),
+                          value: _loading ? null : _totalAccidentes,
                         ),
                       ),
                       const SizedBox(width: 16),
@@ -57,8 +90,7 @@ class DashboardView extends StatelessWidget {
                         child: _StatCard(
                           title: 'Total Establecimientos',
                           icon: Icons.business,
-                          future: EstablecimientosService().getAll(),
-                          builder: (list) => list.length.toString(),
+                          value: _loading ? null : _totalEstablecimientos,
                         ),
                       ),
                     ],
@@ -81,13 +113,14 @@ class DashboardView extends StatelessWidget {
                       const SizedBox(width: 16),
                       Expanded(
                         child: _ModuleCard(
-                          title: 'Establecimientos',
-                          icon: Icons.place,
+                          title: 'Gestionar Establecimientos',
+                          icon: Icons.location_city,
                           onTap: () => context.push('/establecimientos'),
                         ),
                       ),
                     ],
                   ),
+                  const SizedBox(height: 32),
                 ],
               ),
             ),
@@ -101,62 +134,39 @@ class DashboardView extends StatelessWidget {
 class _StatCard extends StatelessWidget {
   final String title;
   final IconData icon;
-  final Future<dynamic> future;
-  final String Function(dynamic data) builder;
+  final int? value;
 
   const _StatCard({
     required this.title,
     required this.icon,
-    required this.future,
-    required this.builder,
+    this.value,
   });
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder(
-      future: future,
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const SkeletonCard(height: 120);
-        }
-        if (snapshot.hasError) {
-          return Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                children: [
-                  Icon(icon, size: 48, color: Colors.red),
-                  const SizedBox(height: 8),
-                  Text(title,
-                      style: const TextStyle(fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 4),
-                  const Text('Error', style: TextStyle(color: Colors.red)),
-                ],
-              ),
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          children: [
+            Icon(icon, size: 48),
+            const SizedBox(height: 8),
+            Text(
+              title,
+              style: const TextStyle(fontWeight: FontWeight.bold),
             ),
-          );
-        }
-        return Card(
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              children: [
-                Icon(icon,
-                    size: 48, color: Theme.of(context).colorScheme.primary),
-                const SizedBox(height: 8),
-                Text(title,
-                    style: const TextStyle(fontWeight: FontWeight.bold)),
-                const SizedBox(height: 4),
-                Text(
-                  builder(snapshot.data),
-                  style: const TextStyle(
-                      fontSize: 20, fontWeight: FontWeight.bold),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
+            const SizedBox(height: 4),
+            if (value != null)
+              Text(
+                value.toString(),
+                style:
+                    const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              )
+            else
+              const SkeletonCard(height: 24),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -177,20 +187,13 @@ class _ModuleCard extends StatelessWidget {
     return Card(
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
         child: Padding(
-          padding: const EdgeInsets.all(24.0),
+          padding: const EdgeInsets.all(16.0),
           child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(icon,
-                  size: 64, color: Theme.of(context).colorScheme.primary),
-              const SizedBox(height: 16),
-              Text(
-                title,
-                textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 16),
-              ),
+              Icon(icon, size: 48),
+              const SizedBox(height: 8),
+              Text(title, textAlign: TextAlign.center),
             ],
           ),
         ),

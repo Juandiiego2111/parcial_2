@@ -46,20 +46,22 @@ Map<String, dynamic> calcularEstadisticas(List<Map<String, dynamic>> rawList) {
     }
 
     final gravedad = acc.gravedadDelAccidente.toLowerCase();
-    if (gravedad.contains('muertos')) {
-      gravedadAccidente['Con muertos'] =
-          (gravedadAccidente['Con muertos'] ?? 0) + 1;
-    } else if (gravedad.contains('heridos')) {
-      gravedadAccidente['Con heridos'] =
-          (gravedadAccidente['Con heridos'] ?? 0) + 1;
+    String normalized;
+    if (gravedad.contains('muerto') || gravedad.contains('muertos')) {
+      normalized = 'Con muertos';
+    } else if (gravedad.contains('herido') || gravedad.contains('heridos')) {
+      normalized = 'Con heridos';
+    } else if (gravedad.contains('da')) {
+      normalized = 'Solo daños';
     } else {
-      gravedadAccidente['Solo daños'] =
-          (gravedadAccidente['Solo daños'] ?? 0) + 1;
+      normalized = 'Solo daños';
     }
+    gravedadAccidente[normalized] = (gravedadAccidente[normalized] ?? 0) + 1;
 
     final barrio = acc.barrioHecho.trim();
-    if (barrio.isNotEmpty && barrio.toLowerCase() != 'no informa') {
-      barriosContador[barrio] = (barriosContador[barrio] ?? 0) + 1;
+    final barrioNorm = barrio.toUpperCase();
+    if (barrioNorm.isNotEmpty && barrioNorm != 'NO INFORMA') {
+      barriosContador[barrioNorm] = (barriosContador[barrioNorm] ?? 0) + 1;
     }
 
     final diaRaw = acc.dia.toLowerCase().trim();
