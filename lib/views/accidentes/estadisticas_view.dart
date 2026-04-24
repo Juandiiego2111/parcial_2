@@ -119,6 +119,7 @@ class _EstadisticasViewState extends State<EstadisticasView> {
                   context,
                   'Distribución por Clase de Accidente',
                   _buildPieChart(),
+                  freeHeight: true,
                 ),
                 _buildChartCard(
                   context,
@@ -143,7 +144,7 @@ class _EstadisticasViewState extends State<EstadisticasView> {
     );
   }
 
-  Widget _buildChartCard(BuildContext context, String title, Widget chart) {
+  Widget _buildChartCard(BuildContext context, String title, Widget chart, {double? chartHeight, bool freeHeight = false}) {
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       elevation: 3,
@@ -162,7 +163,12 @@ class _EstadisticasViewState extends State<EstadisticasView> {
               ),
             ),
             const SizedBox(height: 12),
-            SizedBox(height: 280, child: chart),
+            if (freeHeight)
+              chart
+            else if (chartHeight != null)
+              SizedBox(height: chartHeight, child: chart)
+            else
+              SizedBox(height: 280, child: chart),
           ],
         ),
       ),
@@ -174,49 +180,77 @@ class _EstadisticasViewState extends State<EstadisticasView> {
     final data = (_estadisticas!['claseAccidente'] as Map).cast<String, int>();
     final total = data.values.fold<int>(0, (sum, v) => sum + v);
     final colorMap = {
-      'Choque': Colors.teal,
-      'Atropello': Colors.orange,
-      'Volcamiento': Colors.blue,
-      'Otros': Colors.grey,
+      'Choque': const Color(0xFF00897B),
+      'Atropello': const Color(0xFFFF7043),
+      'Volcamiento': const Color(0xFF42A5F5),
+      'Otros': const Color(0xFFBDBDBD),
     };
     final entries = data.entries.toList();
 
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Expanded(
+        SizedBox(
+          height: 150,
           child: PieChart(
             PieChartData(
               sections: entries.map((e) {
                 final value = e.value.toDouble();
                 final percentage = total > 0 ? (value / total * 100) : 0.0;
-                if (percentage >= 10) {
-                  return PieChartSectionData(
-                    color: colorMap[e.key] ?? Colors.grey,
-                    value: value,
-                    title: '${e.key}\n${percentage.toStringAsFixed(1)}%',
-                    radius: 90,
-                    titleStyle: const TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.white),
-                  );
-                } else {
-                  return PieChartSectionData(
-                    color: colorMap[e.key] ?? Colors.grey,
-                    value: value,
-                    title: '',
-                    radius: 70,
-                    titleStyle: const TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.white),
-                  );
-                }
+                final isBig = percentage >= 10;
+                return PieChartSectionData(
+                  color: colorMap[e.key] ?? Colors.grey,
+                  value: value,
+                  title: isBig ? '${percentage.toStringAsFixed(1)}%' : '',
+                  radius: isBig ? 55 : 38,
+                  titleStyle: const TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                  ),
+                  titlePositionPercentageOffset: 0.6,
+                );
               }).toList(),
-              sectionsSpace: 3,
-              centerSpaceRadius: 55,
+              sectionsSpace: 2,
+              centerSpaceRadius: 35,
             ),
           ),
+        ),
+        const SizedBox(height: 12),
+        // Leyenda en grid 2x2 — nunca desborda
+        GridView.count(
+          crossAxisCount: 2,
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          childAspectRatio: 4.5,
+          padding: EdgeInsets.zero,
+          children: entries.map((e) {
+            final pct = total > 0 ? (e.value / total * 100) : 0.0;
+            return Row(
+              children: [
+                Container(
+                  width: 11,
+                  height: 11,
+                  decoration: BoxDecoration(
+                    color: colorMap[e.key],
+                    shape: BoxShape.circle,
+                  ),
+                ),
+                const SizedBox(width: 5),
+                Expanded(
+                  child: Text(
+                    '${e.key}  ${pct.toStringAsFixed(1)}%',
+                    style: const TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF424242),
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            );
+          }).toList(),
         ),
         const SizedBox(height: 12),
         _buildDataTable(
@@ -380,37 +414,41 @@ class _EstadisticasViewState extends State<EstadisticasView> {
                 leftTitles: AxisTitles(
                   sideTitles: SideTitles(
                     showTitles: true,
-                    reservedSize: 50,
+                    reservedSize: 120,
                     getTitlesWidget: (value, meta) {
-                      if (value == 0) return const Text('');
-                      return Text(
-                        value.toInt().toString(),
-                        style: const TextStyle(fontSize: 11),
-                      );
+                      final index = value.toInt();
+                      if (index >= 0 && index < top.length) {
+                        final barrio = top[index]['barrio'] as String;
+                        return Padding(
+                          padding: const EdgeInsets.only(right: 8.0),
+                          child: Text(
+                            barrio.length > 6
+                                ? '${barrio.substring(0, 6)}..'
+                                : barrio,
+                            style: const TextStyle(
+                                fontSize: 10, fontWeight: FontWeight.w600),
+                            textAlign: TextAlign.right,
+                          ),
+                        );
+                      }
+                      return const Text('');
                     },
                   ),
                 ),
                 bottomTitles: AxisTitles(
                   sideTitles: SideTitles(
                     showTitles: true,
-                    reservedSize: 60,
+                    reservedSize: 70,
                     getTitlesWidget: (value, meta) {
                       final index = value.toInt();
                       if (index >= 0 && index < top.length) {
-                        final barrio = top[index]['barrio'] as String;
-                        final label = barrio.length > 8
-                            ? '${barrio.substring(0, 8)}...'
-                            : barrio;
+                        final count = (top[index]['accidentes'] as num).toInt();
                         return Padding(
                           padding: const EdgeInsets.only(top: 4.0),
-                          child: RotatedBox(
-                            quarterTurns: 1,
-                            child: Text(
-                              label,
-                              style: const TextStyle(
-                                  fontSize: 10, fontWeight: FontWeight.w600),
-                              textAlign: TextAlign.center,
-                            ),
+                          child: Text(
+                            count.toString(),
+                            style: const TextStyle(
+                                fontSize: 11, fontWeight: FontWeight.w700),
                           ),
                         );
                       }
