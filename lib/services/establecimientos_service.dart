@@ -76,7 +76,6 @@ class EstablecimientosService {
   }) async {
     try {
       final Map<String, dynamic> fields = {
-        '_method': 'PUT',
         'nombre': nombre,
         'nit': nit,
         'direccion': direccion,
@@ -88,15 +87,15 @@ class EstablecimientosService {
       }
       final formData = FormData.fromMap(fields);
       final response = await _dio.post(
-        '${ApiConstants.parqueaderoBaseUrl}/establecimiento-update/$id',
+        '/establecimiento-update/$id',
         data: formData,
         options: Options(
           headers: {'Accept': 'application/json'},
           validateStatus: (status) => status! < 500,
         ),
       );
-      if (response.statusCode == 405) {
-        throw Exception('Método no permitido por el servidor');
+      if (response.statusCode != null && response.statusCode! >= 400) {
+        throw Exception('Error del servidor: ${response.data}');
       }
       final raw = response.data is Map && response.data['data'] != null
           ? response.data['data']
@@ -108,8 +107,11 @@ class EstablecimientosService {
   }
 
   Future<void> delete(int id) async {
-    final response = await _dio.delete('/establecimientos/$id');
-    if (response.statusCode != 200) {
+    final response = await _dio.delete(
+      '/establecimientos/$id',
+      options: Options(validateStatus: (status) => status! < 500),
+    );
+    if (response.statusCode != 200 && response.statusCode != 204) {
       throw Exception('Error al eliminar establecimiento');
     }
   }

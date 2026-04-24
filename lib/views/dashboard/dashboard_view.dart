@@ -107,7 +107,10 @@ class _DashboardViewState extends State<DashboardView> {
                         child: _ModuleCard(
                           title: 'Estadísticas de Accidentes',
                           icon: Icons.bar_chart,
-                          onTap: () => context.push('/estadisticas'),
+                          onTap: () =>
+                              context.push('/estadisticas').then((_) {
+                            _cargarTotales();
+                          }),
                         ),
                       ),
                       const SizedBox(width: 16),
@@ -115,7 +118,10 @@ class _DashboardViewState extends State<DashboardView> {
                         child: _ModuleCard(
                           title: 'Gestionar Establecimientos',
                           icon: Icons.location_city,
-                          onTap: () => context.push('/establecimientos'),
+                          onTap: () =>
+                              context.push('/establecimientos').then((_) {
+                            _cargarTotales();
+                          }),
                         ),
                       ),
                     ],

@@ -96,15 +96,18 @@ class _EstablecimientosListViewState extends State<EstablecimientosListView> {
                           title: Text(est.nombre),
                           subtitle: Text('NIT: ${est.nit}\n${est.direccion}'),
                           trailing: Text(est.telefono),
-                          onTap: () =>
-                              context.push('/establecimientos/${est.id}'),
+                          onTap: () => context
+                              .push('/establecimientos/${est.id}')
+                              .then((_) => _cargarEstablecimientos()),
                         ),
                       );
                     },
                   ),
                 ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () => context.push('/establecimientos/create'),
+        onPressed: () => context
+            .push('/establecimientos/create')
+            .then((_) => _cargarEstablecimientos()),
         backgroundColor: Colors.teal,
         child: const Icon(Icons.add),
       ),
