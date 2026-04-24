@@ -189,19 +189,32 @@ class _EstadisticasViewState extends State<EstadisticasView> {
               sections: entries.map((e) {
                 final value = e.value.toDouble();
                 final percentage = total > 0 ? (value / total * 100) : 0.0;
-                return PieChartSectionData(
-                  color: colorMap[e.key] ?? Colors.grey,
-                  value: value,
-                  title: '${e.key}\n${percentage.toStringAsFixed(1)}%',
-                  radius: 80,
-                  titleStyle: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.white),
-                );
+                if (percentage >= 10) {
+                  return PieChartSectionData(
+                    color: colorMap[e.key] ?? Colors.grey,
+                    value: value,
+                    title: '${e.key}\n${percentage.toStringAsFixed(1)}%',
+                    radius: 90,
+                    titleStyle: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white),
+                  );
+                } else {
+                  return PieChartSectionData(
+                    color: colorMap[e.key] ?? Colors.grey,
+                    value: value,
+                    title: '',
+                    radius: 70,
+                    titleStyle: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white),
+                  );
+                }
               }).toList(),
-              sectionsSpace: 4,
-              centerSpaceRadius: 50,
+              sectionsSpace: 3,
+              centerSpaceRadius: 55,
             ),
           ),
         ),
@@ -367,41 +380,37 @@ class _EstadisticasViewState extends State<EstadisticasView> {
                 leftTitles: AxisTitles(
                   sideTitles: SideTitles(
                     showTitles: true,
-                    reservedSize: 120,
+                    reservedSize: 50,
                     getTitlesWidget: (value, meta) {
-                      final index = value.toInt();
-                      if (index >= 0 && index < top.length) {
-                        final barrio = top[index]['barrio'] as String;
-                        return Padding(
-                          padding: const EdgeInsets.only(right: 8.0),
-                          child: Text(
-                            barrio.length > 6
-                                ? '${barrio.substring(0, 6)}..'
-                                : barrio,
-                            style: const TextStyle(
-                                fontSize: 10, fontWeight: FontWeight.w600),
-                            textAlign: TextAlign.right,
-                          ),
-                        );
-                      }
-                      return const Text('');
+                      if (value == 0) return const Text('');
+                      return Text(
+                        value.toInt().toString(),
+                        style: const TextStyle(fontSize: 11),
+                      );
                     },
                   ),
                 ),
                 bottomTitles: AxisTitles(
                   sideTitles: SideTitles(
                     showTitles: true,
-                    reservedSize: 70,
+                    reservedSize: 60,
                     getTitlesWidget: (value, meta) {
                       final index = value.toInt();
                       if (index >= 0 && index < top.length) {
-                        final count = (top[index]['accidentes'] as num).toInt();
+                        final barrio = top[index]['barrio'] as String;
+                        final label = barrio.length > 8
+                            ? '${barrio.substring(0, 8)}...'
+                            : barrio;
                         return Padding(
                           padding: const EdgeInsets.only(top: 4.0),
-                          child: Text(
-                            count.toString(),
-                            style: const TextStyle(
-                                fontSize: 11, fontWeight: FontWeight.w700),
+                          child: RotatedBox(
+                            quarterTurns: 1,
+                            child: Text(
+                              label,
+                              style: const TextStyle(
+                                  fontSize: 10, fontWeight: FontWeight.w600),
+                              textAlign: TextAlign.center,
+                            ),
                           ),
                         );
                       }
