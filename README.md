@@ -1,208 +1,280 @@
-# Parcial 2 — Flutter 🇨🇴
+# 🚦 parcial_2 · Flutter
 
-Aplicación Flutter con dos módulos integrados:
-1. **Estadísticas de Accidentes de Tránsito en Tuluá** — consume el dataset público de Datos Abiertos Colombia, procesa los registros con un Isolate y visualiza 4 estadísticas con `fl_chart`.
-2. **CRUD de Establecimientos** — consume la API REST del sistema de parqueadero con soporte de carga de logo (imagen).
+**Autor:** Juan Diego Rodriguez Ortiz · `230231020` · [@Juandiiego2111](https://github.com/Juandiiego2111)
 
-**Autor:** Juan Diego Rodriguez Ortiz  
-**Código estudiantil:** 230231020  
-**GitHub:** [@Juandiiego2111](https://github.com/Juandiiego2111)  
-**Repositorio:** https://github.com/Juandiiego2111/parcial_2
+Proyecto Flutter de parcial que conecta dos fuentes de datos reales en una sola app:
+
+- Descarga y analiza miles de registros de accidentes de tránsito en Tuluá usando un **Isolate** para no bloquear la UI, luego los presenta como 4 gráficas interactivas.
+- Gestiona establecimientos de parqueadero con un **CRUD completo** que incluye carga de imagen desde galería o cámara.
 
 ---
 
-## APIs Utilizadas
+## 🗂 Contenido
 
-### API 1 — Accidentes de Tránsito Tuluá (Datos Abiertos Colombia)
+1. [Módulos de la app](#módulos-de-la-app)
+2. [Fuentes de datos](#fuentes-de-datos)
+3. [Por qué compute() y no solo async/await](#por-qué-compute-y-no-solo-asyncawait)
+4. [Organización del código](#organización-del-código)
+5. [Navegación con go_router](#navegación-con-go_router)
+6. [Capturas](#capturas)
+7. [Ramas y commits](#ramas-y-commits)
+8. [Correr el proyecto](#correr-el-proyecto)
 
-- **Base URL:** `https://www.datos.gov.co/resource/ezt8-5wyj.json`
-- No requiere autenticación. Respuesta JSON directa.
-- **Endpoint:** `GET ...ezt8-5wyj.json?$limit=100000`
+---
 
-| Campo | Descripción |
-|---|---|
-| `clase_de_accidente` | Choque, Atropello, Volcamiento, etc. |
-| `gravedad_del_accidente` | Con muertos / Con heridos / Solo daños |
-| `barrio_hecho` | Barrio donde ocurrió el accidente |
-| `dia` | Día de la semana |
-| `hora` | Hora del accidente |
-| `area` | Urbana / Rural |
-| `clase_de_vehiculo` | Tipo de vehículo involucrado |
+## Módulos de la app
 
-**Ejemplo de respuesta JSON:**
-```json
-{
-  "clase_de_accidente": "Choque",
-  "gravedad_del_accidente": "Con heridos",
-  "barrio_hecho": "CENTRO",
-  "dia": "Lunes",
-  "hora": "08:30",
-  "area": "Urbana",
-  "clase_de_vehiculo": "Automóvil"
-}
-```
+### 📊 Módulo 1 — Estadísticas de Accidentes
 
-### API 2 — Establecimientos (API Parqueadero)
+Hace un GET con `$limit=100000`, pasa todos los registros a `compute()` para procesarlos fuera del hilo principal y renderiza cuatro gráficas con `fl_chart`:
 
-- **Base URL:** `https://parking.visiontic.com.co/api`
-- **Documentación:** https://parking.visiontic.com.co/api/documentation
-
-| Método | Endpoint | Acción |
+| # | Estadística | Tipo de gráfica |
 |---|---|---|
-| GET | `/establecimientos` | Listar todos |
-| GET | `/establecimientos/{id}` | Ver uno |
-| POST | `/establecimientos` | Crear (multipart/form-data) |
-| POST | `/establecimiento-update/{id}` | Editar (`_method=PUT`) |
-| DELETE | `/establecimientos/{id}` | Eliminar |
+| 1 | Distribución por clase de accidente | `PieChart` |
+| 2 | Distribución por gravedad | `BarChart` |
+| 3 | Top 5 barrios con más accidentes | `BarChart` |
+| 4 | Accidentes por día de la semana | `BarChart` |
 
-**Ejemplo de respuesta JSON:**
+Mientras cargan los datos aparece un skeleton animado. Si falla la petición se muestra un mensaje con botón **Reintentar**.
+
+---
+
+### 🏢 Módulo 2 — Gestión de Establecimientos
+
+CRUD completo sobre la API Parqueadero:
+
+| Operación | Detalle |
+|---|---|
+| Listar | `ListView.builder` con logo, nombre, NIT, dirección y teléfono |
+| Ver detalle | Logo grande + campos en tarjetas con iconos |
+| Crear | Formulario validado + selector de imagen (galería o cámara) |
+| Editar | Misma pantalla del formulario, precargada con los datos del ítem |
+| Eliminar | Botón en el detalle con `AlertDialog` de confirmación |
+
+El update usa **method spoofing de Laravel**: se hace `POST` a `/establecimiento-update/{id}` incluyendo el campo `_method: PUT` en el `FormData`.
+
+---
+
+## Fuentes de datos
+
+### Dataset — Accidentes Tuluá
+
+```
+GET https://www.datos.gov.co/resource/ezt8-5wyj.json?$limit=100000
+```
+
+Sin autenticación. Devuelve un array JSON con un registro por accidente.
+
+**Campos usados:**
+
 ```json
 {
-  "id": 1,
-  "nombre": "Parqueadero Central",
-  "nit": "900123456-7",
-  "direccion": "Cra 5 # 10-20",
-  "telefono": "3001234567",
-  "logo": "storage/logos/logo.jpg"
+  "clase_de_accidente":    "Choque",
+  "gravedad_del_accidente":"Con heridos",
+  "barrio_hecho":          "CENTRO",
+  "dia":                   "Viernes",
+  "hora":                  "14:30",
+  "area":                  "Urbana",
+  "clase_de_vehiculo":     "Automóvil"
 }
 ```
 
 ---
 
-## Future / async-await vs Isolate
-
-**`Future` + `async/await`** es suficiente para operaciones de I/O (peticiones HTTP, archivos, base de datos) porque el hilo principal no se bloquea mientras espera la respuesta de la red.
-
-**`Isolate`** (o `compute()`) es necesario cuando hay que procesar grandes volúmenes de datos **en memoria**, como clasificar, agregar o filtrar decenas de miles de registros. Ejecutar esa lógica en el hilo principal causaría congelamiento visible de la interfaz.
-
-En este parcial se usó `compute(calcularEstadisticas, rawData)` para procesar hasta **100.000 registros** de accidentes fuera del hilo principal. El resultado se devuelve como `Map<String, dynamic>` y alimenta directamente las 4 gráficas. Las líneas de log confirman el procesamiento:
+### API Parqueadero — Establecimientos
 
 ```
-[Isolate] Iniciado — N registros recibidos
-[Isolate] Completado en X ms
+Base: https://parking.visiontic.com.co/api
+Docs: https://parking.visiontic.com.co/api/documentation
 ```
+
+| Verbo HTTP | Ruta | Qué hace |
+|---|---|---|
+| `GET` | `/establecimientos` | Lista todos |
+| `GET` | `/establecimientos/{id}` | Trae uno por ID |
+| `POST` | `/establecimientos` | Crea uno nuevo |
+| `POST` | `/establecimiento-update/{id}` | Edita (con `_method=PUT`) |
+| `DELETE` | `/establecimientos/{id}` | Elimina |
+
+**Respuesta típica:**
+
+```json
+{
+  "id": 3,
+  "nombre": "Parqueadero Norte",
+  "nit": "900456789-1",
+  "direccion": "Av. 4 Norte # 12-05",
+  "telefono": "3156789012",
+  "logo": "/storage/logos/norte.jpg"
+}
+```
+
+El campo `logo` es una ruta relativa; el modelo lo convierte a URL absoluta con el getter `logoUrl`.
 
 ---
 
-## Arquitectura y Estructura del Proyecto
+## Por qué `compute()` y no solo `async/await`
+
+`async/await` resuelve el problema de **esperar** sin bloquear: la UI queda libre mientras se hace una petición HTTP, porque quien "trabaja" es la red, no Dart.
+
+El problema aparece cuando hay que **procesar** lo que llegó. Con 100.000 registros, recorrer la lista, normalizar strings, contar frecuencias y ordenar resultados es trabajo puro de CPU que sí ocupa el hilo principal. Eso produce frames perdidos y la interfaz se congela.
+
+`compute(calcularEstadisticas, rawData)` delega esa función a un Isolate —un hilo separado con su propio heap— y devuelve el resultado cuando termina. La UI sigue funcionando con normalidad durante todo el proceso.
+
+En consola se puede ver cuándo inicia y cuánto tarda:
+
+```
+[Isolate] Iniciado — 8542 registros recibidos
+[Isolate] Completado en 287 ms
+```
+
+> `compute()` de `flutter/foundation.dart` es equivalente a `Isolate.run()` y funciona desde Dart 2.19 / Flutter 3 en adelante.
+
+---
+
+## Organización del código
 
 ```
 lib/
-├── core/constants/
-│   └── api_constants.dart          # URLs base desde .env
+│
+├── main.dart                               # Carga .env y monta MaterialApp.router
+├── app_router.dart                         # Todas las rutas declaradas con go_router
+│
+├── core/
+│   └── constants/api_constants.dart        # Lee las URLs desde dotenv
+│
 ├── models/
-│   ├── accidente_model.dart         # fromJson / toJson
-│   └── establecimiento_model.dart   # fromJson / toJson + logoUrl getter
+│   ├── accidente_model.dart                # fromJson · toJson · toRawMap
+│   └── establecimiento_model.dart          # fromJson · toJson · getter logoUrl
+│
 ├── isolates/
-│   └── accidentes_isolate.dart      # calcularEstadisticas() — 4 stats
+│   └── accidentes_isolate.dart             # calcularEstadisticas() — función pura
+│
 ├── services/
-│   ├── accidentes_service.dart      # GET ?$limit=100000 con Dio
-│   └── establecimientos_service.dart# CRUD completo con Dio + multipart
+│   ├── accidentes_service.dart             # fetchAll() con Dio + $limit=100000
+│   └── establecimientos_service.dart       # getAll · getById · create · update · delete
+│
 ├── views/
 │   ├── dashboard/
-│   │   └── dashboard_view.dart      # Home: totales + cards módulos
+│   │   └── dashboard_view.dart             # Home: totales en paralelo + cards
 │   ├── accidentes/
-│   │   └── estadisticas_view.dart   # 4 gráficas fl_chart
+│   │   └── estadisticas_view.dart          # 4 gráficas + skeleton + error
 │   └── establecimientos/
-│       ├── establecimientos_list_view.dart   # Lista + skeleton + FAB
-│       ├── establecimiento_detail_view.dart  # Detalle + edit + delete
-│       └── establecimiento_form_view.dart    # Crear / Editar
-├── widgets/
-│   └── skeleton_card.dart           # Skeletonizer reutilizable
-├── app_router.dart                   # go_router
-└── main.dart                         # dotenv + MaterialApp.router
+│       ├── establecimientos_list_view.dart  # Lista + skeleton + FAB
+│       ├── establecimiento_detail_view.dart # Detalle + editar + eliminar
+│       └── establecimiento_form_view.dart   # Crear / editar con image_picker
+│
+└── widgets/
+    └── skeleton_card.dart                  # Skeletonizer reutilizable
 ```
 
-### Paquetes utilizados
+### Dependencias
 
-| Paquete | Versión | Uso |
+| Paquete | Versión | Para qué se usa |
 |---|---|---|
-| `dio` | ^5.4.0 | Peticiones HTTP + multipart/form-data |
-| `go_router` | ^17.0.0 | Navegación declarativa con extra |
-| `flutter_dotenv` | ^6.0.0 | Variables de entorno (.env) |
-| `fl_chart` | ^0.68.0 | PieChart y BarChart |
-| `skeletonizer` | ^2.0.0 | Efecto skeleton en carga |
-| `image_picker` | ^1.0.7 | Selección de logo (galería / cámara) |
+| `dio` | ^5.4.0 | HTTP + `FormData` multipart |
+| `go_router` | ^17.0.0 | Rutas declarativas con `extra` |
+| `flutter_dotenv` | ^6.0.0 | URLs en `.env` |
+| `fl_chart` | ^0.68.0 | `PieChart` y `BarChart` |
+| `skeletonizer` | ^2.0.0 | Skeleton mientras carga |
+| `image_picker` | ^1.0.7 | Logo desde galería o cámara |
 
----
-
-## Rutas implementadas con go_router
-
-| Ruta | Pantalla | Parámetros |
-|---|---|---|
-| `/` | DashboardView | — |
-| `/estadisticas` | EstadisticasView | — |
-| `/establecimientos` | EstablecimientosListView | — |
-| `/establecimientos/create` | EstablecimientoFormView | id: null |
-| `/establecimientos/:id` | EstablecimientoDetailView | `id` (int) |
-| `/establecimientos/:id/edit` | EstablecimientoFormView | `id` (int), `extra`: EstablecimientoModel |
-
-Los objetos completos se pasan con `state.extra` para evitar peticiones HTTP redundantes en la pantalla de edición:
+`.env` declarado como asset en `pubspec.yaml` y cargado antes de `runApp()`:
 
 ```dart
-context.push('/establecimientos/${est.id}/edit', extra: est);
+await dotenv.load(fileName: '.env');
 ```
 
 ---
 
-## Capturas de Pantalla
+## Navegación con go_router
+
+Definidas en `lib/app_router.dart`. Las rutas estáticas van antes que las dinámicas para que `go_router` no las confunda.
+
+| Path | Pantalla | Parámetros |
+|---|---|---|
+| `/` | `DashboardView` | — |
+| `/estadisticas` | `EstadisticasView` | — |
+| `/establecimientos` | `EstablecimientosListView` | — |
+| `/establecimientos/create` | `EstablecimientoFormView` | `id: null` |
+| `/establecimientos/:id` | `EstablecimientoDetailView` | `id` → path param |
+| `/establecimientos/:id/edit` | `EstablecimientoFormView` | `id` → path param · modelo → `extra` |
+
+El objeto `EstablecimientoModel` se pasa completo con `extra` al editar para evitar una segunda petición al servidor:
+
+```dart
+// Enviar
+context.push('/establecimientos/${widget.id}/edit', extra: est);
+
+// Recibir en el router
+final establecimiento = state.extra as EstablecimientoModel?;
+```
+
+---
+
+## Capturas
 
 ### Dashboard
-> Totales de accidentes y establecimientos cargados en paralelo con `Future.wait()`. Skeleton mientras carga.
+> Totales de accidentes y establecimientos cargados con `Future.wait()`. Cards de acceso a cada módulo.
 
-<!-- Insertar captura del Dashboard -->
+<!-- Pegar imagen aquí -->
 
-### Estadísticas de Accidentes — 4 Gráficas
-> PieChart de clase, BarChart de gravedad, BarChart top 5 barrios, BarChart por día.
+### Estadísticas — estado skeleton
+> `SkeletonCard` animado mientras el Isolate procesa los registros.
 
-<!-- Insertar captura de estadísticas -->
+<!-- Pegar imagen aquí -->
 
-### Listado de Establecimientos
-> ListView.builder con logo, nombre, NIT, dirección y teléfono. Skeleton + FAB.
+### Estadísticas — 4 gráficas
+> PieChart de clase · BarChart de gravedad · BarChart top barrios · BarChart por día.
 
-<!-- Insertar captura del listado -->
+<!-- Pegar imagen aquí -->
 
-### Formulario Crear / Editar
-> Formulario con validación, selector de imagen (galería o cámara) y envío multipart.
+### Listado de establecimientos
+> `ListView.builder` con logo en `CircleAvatar`, nombre, NIT, dirección y teléfono.
 
-<!-- Insertar captura del formulario -->
+<!-- Pegar imagen aquí -->
 
-### Detalle y Eliminación
-> Detalle completo con logo grande. Botones editar y eliminar con AlertDialog de confirmación.
+### Formulario crear / editar
+> Campos validados + selector de imagen con botones Galería y Cámara.
 
-<!-- Insertar captura del detalle -->
+<!-- Pegar imagen aquí -->
 
----
+### Detalle + eliminación
+> Logo grande · campos en tarjetas · `AlertDialog` de confirmación al eliminar.
 
-## Flujo de trabajo Git
-
-```
-main          ← rama estable (producción)
-└── dev       ← rama de integración
-    └── feature/parcial_flutter_final  ← desarrollo del parcial
-```
-
-1. Se creó `feature/parcial_flutter_final` a partir de `dev`
-2. Commits atómicos con prefijos: `feat:`, `fix:`, `docs:`, `refactor:`
-3. Pull Request de `feature/parcial_flutter_final` → `dev` con descripción y capturas
-4. Merge a `dev` y posteriormente a `main`
+<!-- Pegar imagen aquí -->
 
 ---
 
-## Instrucciones para ejecutar
+## Ramas y commits
+
+```
+main                          ← producción, solo merges revisados
+└── dev                       ← integración
+    └── feature/parcial_flutter_final   ← todo el desarrollo
+```
+
+Prefijos de commit usados: `feat:` `fix:` `docs:` `refactor:` `chore:`
+
+Flujo seguido:
+1. Desarrollo en `feature/parcial_flutter_final`
+2. PR hacia `dev` con descripción y capturas de evidencia
+3. Merge a `dev` tras revisión
+4. Merge final a `main`
+
+---
+
+## Correr el proyecto
 
 ```bash
-# 1. Clonar el repositorio
 git clone https://github.com/Juandiiego2111/parcial_2.git
 cd parcial_2
-
-# 2. Instalar dependencias
 flutter pub get
-
-# 3. Verificar el archivo .env en la raíz
-# ACCIDENTES_BASE_URL=https://www.datos.gov.co/resource/ezt8-5wyj.json
-# ESTABLECIMIENTOS_BASE_URL=https://parking.visiontic.com.co/api
-
-# 4. Ejecutar
 flutter run
+```
+
+Verificar que se tiene Flutter ≥ 3.0 / Dart ≥ 2.19:
+
+```bash
+flutter --version
 ```
