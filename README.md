@@ -217,32 +217,28 @@ final establecimiento = state.extra as EstablecimientoModel?;
 ### Dashboard
 > Totales de accidentes y establecimientos cargados con `Future.wait()`. Cards de acceso a cada módulo.
 
-<!-- Pegar imagen aquí -->
-
-### Estadísticas — estado skeleton
-> `SkeletonCard` animado mientras el Isolate procesa los registros.
-
-<!-- Pegar imagen aquí -->
+<img width="391" height="820" alt="image" src="https://github.com/user-attachments/assets/a566e78a-2606-4357-b289-82afddb05607" />
 
 ### Estadísticas — 4 gráficas
 > PieChart de clase · BarChart de gravedad · BarChart top barrios · BarChart por día.
 
-<!-- Pegar imagen aquí -->
+<img width="508" height="746" alt="image" src="https://github.com/user-attachments/assets/7dc46fd9-76a5-4370-819a-fab043241a5a" />
 
 ### Listado de establecimientos
 > `ListView.builder` con logo en `CircleAvatar`, nombre, NIT, dirección y teléfono.
 
-<!-- Pegar imagen aquí -->
+<img width="410" height="914" alt="image" src="https://github.com/user-attachments/assets/69d09e89-c1b4-4159-9eab-044c4ddb7d19" />
 
 ### Formulario crear / editar
 > Campos validados + selector de imagen con botones Galería y Cámara.
 
-<!-- Pegar imagen aquí -->
+<img width="326" height="627" alt="image" src="https://github.com/user-attachments/assets/2db06149-3fe3-44a2-987a-7dc053485410" />
+<img width="345" height="621" alt="image" src="https://github.com/user-attachments/assets/7d111cb0-9d1f-4334-ac7b-e2c115c3f61c" />
 
 ### Detalle + eliminación
 > Logo grande · campos en tarjetas · `AlertDialog` de confirmación al eliminar.
 
-<!-- Pegar imagen aquí -->
+<img width="391" height="836" alt="image" src="https://github.com/user-attachments/assets/ed55c1de-7a1e-45bf-b709-fcd5de1167ef" />
 
 ---
 
